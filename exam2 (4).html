@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>未来残高ウォレット</title>
+    <style>
+        :root {
+            --brand-50: #EEF2FF;
+            --brand-100: #E0E7FF;
+            --brand-500: #6366F1;
+            --brand-600: #4F46E5;
+            --brand-900: #312E81;
+            --income-color: #10B981;
+            --expense-color: #EF4444;
+            --gray-50: #F8FAFC;
+            --gray-200: #E2E8F0;
+            --gray-600: #475569;
+            --gray-900: #0F172A;
+            --bg: #F1F5F9;
+            --surface: #FFFFFF;
+            --border: rgba(0,0,0,0.08);
+            --radius: 12px;
+            --radius-full: 9999px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--gray-900); overflow-x: hidden; }
+        .app { max-width: 420px; margin: 0 auto; min-height: 100vh; background: var(--surface); position: relative; padding-bottom: 100px; box-shadow: 0 0 40px rgba(0,0,0,0.1); }
+        
+        /* Setup UI */
+        .setup-container { padding: 48px 24px; text-align: left; }
+        .setup-title { font-size: 28px; font-weight: 800; color: var(--brand-900); margin-bottom: 8px; }
+        .setup-desc { font-size: 15px; color: var(--gray-600); margin-bottom: 40px; line-height: 1.5; }
+        
+        .form-group { margin-bottom: 24px; }
+        .form-label { display: block; font-size: 14px; font-weight: 700; color: var(--gray-900); margin-bottom: 8px; }
+        .input-field { width: 100%; padding: 14px; border-radius: var(--radius); border: 2px solid var(--gray-200); font-size: 16px; transition: all 0.2s; background: var(--gray-50); }
+        .input-field:focus { border-color: var(--brand-500); outline: none; background: white; box-shadow: 0 0 0 4px var(--brand-50); }
+        
+        .primary-btn { width: 100%; padding: 16px; background: var(--brand-600); color: white; border: none; border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); transition: all 0.1s; }
+        .primary-btn:active { transform: scale(0.98); background: var(--brand-900); }
+        
+        /* Header */
+        .header { background: var(--brand-900); padding: 24px 20px; color: white; position: sticky; top: 0; z-index: 100; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .app-name { font-size: 14px; font-weight: 700; color: var(--brand-100); }
+        .header-edit-btn { font-size: 12px; background: rgba(255,255,255,0.15); border: none; color: white; padding: 6px 14px; border-radius: 20px; cursor: pointer; }
+        .balance-amount { font-size: 34px; font-weight: 800; }
+        .balance-date { font-size: 12px; opacity: 0.8; margin-top: 4px; }
+
+        /* Tabs */
+        .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 110px; z-index: 99; }
+        .tab-btn { flex: 1; padding: 14px 0; font-size: 13px; font-weight: 600; color: var(--gray-600); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: var(--brand-600); border-bottom-color: var(--brand-600); background: var(--brand-50); }
+
+        .section { padding: 20px; }
+        .fab { position: fixed; bottom: 32px; right: calc(50% - 210px + 20px); width: 60px; height: 60px; background: var(--brand-600); color: white; border: none; border-radius: 50%; font-size: 28px; cursor: pointer; z-index: 1000; box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+        
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal-content { background: white; width: 90%; max-width: 380px; padding: 24px; border-radius: var(--radius); }
+
+        .checkbox-group { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .checkbox-group input { width: 18px; height: 18px; cursor: pointer; }
+
+        /* カレンダー */
+        .cal-table { border-spacing: 0; border-collapse: collapse; width: 100%; }
+        .cal-table th { padding: 8px; text-align: center; font-size: 12px; font-weight: 700; }
+        .cal-table td { padding: 8px 4px; text-align: center; cursor: pointer; position: relative; }
+        .cal-day { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; margin: 0 auto; border-radius: 50%; font-size: 13px; font-weight: 500; transition: all 0.1s; }
+        .cal-day.is-today { background: var(--brand-600); color: white; font-weight: 700; }
+        .cal-day.is-selected { background: var(--brand-100); color: var(--brand-900); font-weight: 700; outline: 2px solid var(--brand-600); }
+        .cal-disabled { color: #ccc; cursor: not-allowed; }
+        .cal-dots { display: flex; justify-content: center; gap: 2px; margin-top: 4px; min-height: 6px; }
+        .cal-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+
+        /* 詳細エリア */
+        #detail { margin: 16px 0; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--brand-50); display: none; }
+        #detail-date { font-size: 15px; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; }
+        #detail-balance { font-size: 18px; font-weight: 800; color: var(--brand-600); margin-bottom: 12px; }
+
+        @media (max-width: 420px) { 
+            .app { max-width: 100%; }
+            .fab { right: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app" id="app"></div>
+<button class="fab" id="fab-btn">＋</button>
+
+<div class="modal-overlay" id="job-modal">
+    <div class="modal-content">
+        <h2 id="job-modal-title" style="margin-bottom:20px; font-size:18px;">バイト先を追加</h2>
+        <div class="form-group">
+            <label class="form-label">バイト先の名前</label>
+            <input class="input-field" id="job-name" type="text" placeholder="例：カフェ○○">
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+                <label class="form-label">時給 (円)</label>
+                <input class="input-field" id="job-wage" type="number" placeholder="1100">
+            </div>
+            <div class="form-group">
+                <label class="form-label">締日</label>
+                <select class="input-field" id="job-cutday">
+                    <option value="end">月末</option>
+                    <option value="25">25日</option>
+                    <option value="20">20日</option>
+                    <option value="15">15日</option>
+                </select>
+            </div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:16px;">
+            <button class="primary-btn" id="job-submit-btn">追加する</button>
+            <button class="primary-btn" id="job-delete-btn" style="background:var(--expense-color); display:none;" onclick="deleteJob()">削除する</button>
+            <button class="primary-btn" style="background:var(--gray-600)" onclick="closeModal('job-modal')">閉じる</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="shift-modal">
+    <div class="modal-content">
+        <h2 style="margin-bottom:20px; font-size:18px;">シフトを追加</h2>
+        <div class="form-group">
+            <label class="form-label">バイト先</label>
+            <select class="input-field" id="shift-job-select"></select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">日付</label>
+            <input class="input-field" id="shift-date" type="date">
+        </div>
+        <div class="form-group">
+            <label class="form-label">勤務時間（h）</label>
+            <input class="input-field" id="shift-hours" type="number" placeholder="6">
+        </div>
+        <div style="display:flex; gap:8px; margin-top:16px;">
+            <button class="primary-btn" id="shift-submit-btn" onclick="addShift()">追加する</button>
+            <button class="primary-btn" style="background:var(--gray-600)" onclick="closeModal('shift-modal')">閉じる</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="tx-modal">
+    <div class="modal-content">
+        <h2 id="tx-modal-title" style="margin-bottom:20px; font-size:18px;">収支を追加</h2>
+        <div class="form-group">
+            <label class="form-label">種別</label>
+            <div style="display:flex; gap:8px;">
+                <button id="btnIncome" class="tab-btn active" style="flex:1; border:1px solid var(--border);" onclick="setTxType('income')">＋ 収入</button>
+                <button id="btnExpense" class="tab-btn" style="flex:1; border:1px solid var(--border);" onclick="setTxType('expense')">－ 支出</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">金額 (円)</label>
+            <input class="input-field" id="amountInput" type="number" placeholder="2000">
+        </div>
+        <div class="form-group">
+            <label class="form-label">日付 (日を選択)</label>
+            <div id="tx-date-grid" style="display:grid; grid-template-columns:repeat(7, 1fr); gap:4px;"></div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">ラベル</label>
+            <input class="input-field" id="labelInput" type="text" placeholder="例: 食費">
+        </div>
+        <div class="checkbox-group" onclick="document.getElementById('repeatCheckbox').click()" style="margin-bottom: 20px;">
+            <input type="checkbox" id="repeatCheckbox">
+            <label style="font-size: 14px; color: var(--gray-600); cursor: pointer;">毎月この日に収支を繰り返す (固定設定)</label>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:16px;">
+            <button class="primary-btn" id="tx-submit-btn" onclick="addTransaction()">追加する</button>
+            <button class="primary-btn" style="background:var(--gray-600)" onclick="closeModal('tx-modal')">閉じる</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// 1. 基本設定 & ツール (Zhang)
+// ==========================================
+const TODAY = new Date();
+TODAY.setHours(0,0,0,0);
+
+function todayStr() { return fmtDate(TODAY); }
+function fmtDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+}
+function fmtMoney(n) { return '¥' + Number(n).toLocaleString(); }
+
+let state = {
+    account: null,
+    transactions: [],
+    jobs: [],
+    shifts: [],
+    selectedDate: null,
+    currentTab: 'calendar',
+    calYear: new Date().getFullYear(),
+    calMonth: new Date().getMonth(),
+    editingId: null,
+    txType: 'income'
+};
+
+function save() { localStorage.setItem('wallet_state', JSON.stringify(state)); }
+function load() {
+    const raw = localStorage.getItem('wallet_state');
+    if (raw) Object.assign(state, JSON.parse(raw));
+}
+
+// ==========================================
+// 2. 画面レンダリングの全体制御
+// ==========================================
+function render() {
+    const app = document.getElementById('app');
+    const fab = document.getElementById('fab-btn');
+    if (!state.account) {
+        if (fab) fab.style.display = 'none';
+        app.innerHTML = renderSetup();
+        return;
+    }
+    
+    if (fab) {
+        fab.style.display = (state.currentTab === 'list' || state.currentTab === 'calendar') ? 'block' : 'none';
+        fab.onclick = showTxModal;
+    }
+    
+    app.innerHTML = renderHeader() + renderTabs() + renderTabContent();
+    
+    if (state.currentTab === 'calendar') {
+        setTimeout(() => {
+            const container = document.getElementById('calendar-container');
+            if (container) container.innerHTML = createCalendar(state.calYear, state.calMonth + 1);
+            
+            // 如果之前选中过日期，渲染后保持选中数据展开状态
+            if (state.selectedDate) {
+                selectDate(state.selectedDate);
+            }
+        }, 0);
+    }
+}
+
+function renderHeader() {
+    const bal = fmtMoney(getBalance(todayStr()));
+    return `
+    <div class="header">
+        <div class="header-top">
+            <div class="app-name">未来残高ウォレット</div>
+            <button class="header-edit-btn" onclick="switchTab('settings')">設定</button>
+        </div>
+        <div class="balance-amount">${bal}</div>
+        <div class="balance-date">基準日：${state.account.date}</div>
+    </div>
+    `;
+}
+
+function renderTabs() {
+    const tabs = [
+        { id: 'calendar', label: 'カレンダー' },
+        { id: 'list', label: '収支一覧' },
+        { id: 'shift', label: 'シフト' },
+        { id: 'settings', label: '設定' }
+    ];
+    return `
+    <div class="tabs">
+        ${tabs.map(t => `
+        <button class="tab-btn ${state.currentTab === t.id ? 'active' : ''}" onclick="switchTab('${t.id}')">
+            ${t.label}
+        </button>
+        `).join('')}
+    </div>
+    `;
+}
+
+function renderTabContent() {
+    switch (state.currentTab) {
+        case 'calendar': return renderCalendarTab();
+        case 'list':     return renderTransactionTab();
+        case 'shift':    return renderShiftTab();
+        case 'settings': return renderSettingsTab();
+        default: return '';
+    }
+}
+
+function switchTab(tab) {
+    state.currentTab = tab;
+    render();
+}
+
+// ==========================================
+// 3. 初期設定 & 設定画面
+// ==========================================
+function renderSetup() {
+    return `
+    <div class="setup-container">
+        <h1 class="setup-title">ようこそ</h1>
+        <p class="setup-desc">未来残高ウォレットへ。まずは現在の残高と計算の基準日を設定しましょう。</p>
+        <div class="form-group">
+            <label class="form-label">現在の銀行残高 (円)</label>
+            <input type="number" id="balanceInput" class="input-field" placeholder="例: 100000" value="0">
+        </div>
+        <div class="form-group">
+            <label class="form-label">基準日</label>
+            <input type="date" id="baseDateInput" class="input-field" value="${todayStr()}">
+        </div>
+        <div style="margin-top: 48px;">
+            <button class="primary-btn" onclick="handleSetupSave()">保存して始める</button>
+        </div>
+    </div>
+    `;
+}
+
+function handleSetupSave() {
+    const bankVal = document.getElementById('balanceInput').value;
+    const dateVal = document.getElementById('baseDateInput').value;
+    if (!dateVal) { alert('基準日を入力してください'); return; }
+    state.account = { bank: Number(bankVal) || 0, date: dateVal };
+    save();
+    render();
+}
+
+function renderSettingsTab() {
+    const acc = state.account || { bank: 0, date: todayStr() };
+    return `
+    <div class="section">
+        <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--brand-900);">システム設定</h2>
+        <div class="form-group">
+            <label class="form-label">現在の残高を修正</label>
+            <input type="number" id="settingsBalanceInput" class="input-field" value="${acc.bank}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">基準日を修正</label>
+            <input type="date" id="settingsBaseDateInput" class="input-field" value="${acc.date}">
+        </div>
+        <div style="margin-top: 32px;">
+            <button class="primary-btn" onclick="handleSettingsUpdate()">設定を更新する</button>
+        </div>
+    </div>
+    `;
+}
+
+function handleSettingsUpdate() {
+    const bankVal = document.getElementById('settingsBalanceInput').value;
+    const dateVal = document.getElementById('settingsBaseDateInput').value;
+    if (!dateVal) { alert('基準日を入力してください'); return; }
+    state.account = { bank: Number(bankVal) || 0, date: dateVal };
+    save();
+    alert('設定が更新されました');
+    render();
+}
+
+// ==========================================
+// 4. カレンダー画面 & 【修复后强化】日历联动
+// ==========================================
+const weeks = ['日', '月', '火', '水', '木', '金', '土'];
+
+function renderCalendarTab() {
+    return `
+    <div class="section">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h2 style="font-size:16px; font-weight:700; color:var(--brand-900);">${state.calYear}年${state.calMonth + 1}月</h2>
+            <div style="display:flex; gap:8px;">
+                <button onclick="moveMonth(-1)" style="padding:6px 14px; border:1px solid var(--border); border-radius:8px; background:white; cursor:pointer; font-size:16px;">＜</button>
+                <button onclick="moveMonth(1)" style="padding:6px 14px; border:1px solid var(--border); border-radius:8px; background:white; cursor:pointer; font-size:16px;">＞</button>
+            </div>
+        </div>
+        <div id="calendar-container"></div>
+        
+        <div id="detail">
+            <div id="detail-date"></div>
+            <div id="detail-balance"></div>
+            <div id="detail-shift-list"></div>
+        </div>
+    </div>
+    `;
+}
+
+function createCalendar(year, month) {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+    const endDayCount = endDate.getDate();
+    const lastMonthEndDate = new Date(year, month - 1, 0);
+    const lastMonthendDayCount = lastMonthEndDate.getDate();
+    const startDay = startDate.getDay();
+    let dayCount = 1;
+    let html = '<table class="cal-table"><tr>';
+    
+    for (let i = 0; i < weeks.length; i++) {
+        const color = i === 0 ? 'var(--expense-color)' : i === 6 ? 'var(--brand-500)' : 'var(--gray-600)';
+        html += `<th style="color:${color};">${weeks[i]}</th>`;
+    }
+    html += '</tr>';
+    
+    for (let w = 0; w < 6; w++) {
+        html += '<tr>';
+        for (let d = 0; d < 7; d++) {
+            if (w === 0 && d < startDay) {
+                const num = lastMonthendDayCount - startDay + d + 1;
+                html += `<td><div class="cal-day cal-disabled">${num}</div></td>`;
+            } else if (dayCount > endDayCount) {
+                const num = dayCount - endDayCount;
+                html += `<td><div class="cal-day cal-disabled">${num}</div></td>`;
+                dayCount++;
+            } else {
+                const today = new Date();
+                const isToday = year === today.getFullYear() && month === today.getMonth() + 1 && dayCount === today.getDate();
+                const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(dayCount).padStart(2,'0')}`;
+                const isSelected = dateStr === state.selectedDate;
+                const hasExpense = state.transactions.some(t => t.date === dateStr && t.type === 'expense');
+                const hasIncome = state.transactions.some(t => t.date === dateStr && t.type === 'income');
+                const hasShift = state.shifts.some(s => s.date === dateStr);
+                const dots = `
+                    ${hasExpense ? '<span class="cal-dot" style="background:var(--expense-color);"></span>' : ''}
+                    ${hasIncome ? '<span class="cal-dot" style="background:var(--income-color);"></span>' : ''}
+                    ${hasShift ? '<span class="cal-dot" style="background:var(--brand-500);"></span>' : ''}
+                `;
+                
+                // 确保点击事件完全直达表格单元格的根节点，规避冒泡冲突
+                html += `<td onclick="selectDate('${dateStr}')" style="background:${isSelected ? 'var(--brand-50)' : 'none'}; border-radius:8px;">
+                    <div class="cal-day ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}">${dayCount}</div>
+                    <div class="cal-dots">${dots}</div>
+                </td>`;
+                dayCount++;
+            }
+        }
+        html += '</tr>';
+        if (dayCount > endDayCount) break;
+    }
+    html += '</table>';
+    return html;
+}
+
+function moveMonth(dir) {
+    state.calMonth += dir;
+    if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
+    if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
+    render();
+}
+
+// 【强制更新】：点击日期后强制渲染并平滑展示当前日期的物理区域信息和排班表
+function selectDate(dateStr) {
+    state.selectedDate = dateStr;
+    
+    const detail = document.getElementById('detail');
+    const dDate = document.getElementById('detail-date');
+    const dBal = document.getElementById('detail-balance');
+    const dShiftList = document.getElementById('detail-shift-list');
+    
+    if (detail) {
+        // 强制确保物理区域能够显现（从隐藏转为显示）
+        detail.style.display = 'block';
+        if (dDate) dDate.textContent = dateStr;
+        if (dBal) dBal.textContent = `予測残高: ${fmtMoney(getBalance(dateStr))}`;
+        
+        if (dShiftList) {
+            const dayShifts = state.shifts.filter(s => s.date === dateStr);
+            if (dayShifts.length === 0) {
+                dShiftList.innerHTML = `<div style="font-size:13px; color:var(--gray-600); margin-top:4px;">シフトなし</div>`;
+            } else {
+                let shiftHtml = '<div style="font-size:14px; font-weight:700; margin-top:10px; color:var(--brand-900);">【本日のシフト】</div>';
+                shiftHtml += '<ul style="list-style:none; padding:0; margin-top:6px;">';
+                dayShifts.forEach(s => {
+                    const job = state.jobs.find(j => j.id === s.jobId);
+                    const jobName = job ? job.name : '不明なバイト先';
+                    shiftHtml += `
+                        <li style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:6px; padding:8px; background:#fff; border-radius:8px; border:1px solid var(--border); box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+                            <span><strong>${jobName}</strong></span>
+                            <span style="color:var(--brand-600); font-weight:600;">${s.hours} h (時給 ￥${job ? job.wage : 0})</span>
+                        </li>`;
+                });
+                shiftHtml += '</ul>';
+                dShiftList.innerHTML = shiftHtml;
+            }
+        }
+    }
+    
+    // 只改变选中日期样式类而不重复销毁整个DOM，保证流畅体验
+    const tds = document.querySelectorAll('.cal-table td');
+    tds.forEach(td => {
+        if(td.getAttribute('onclick') && td.getAttribute('onclick').includes(dateStr)) {
+            td.style.background = 'var(--brand-50)';
+            const dayDiv = td.querySelector('.cal-day');
+            if(dayDiv) dayDiv.classList.add('is-selected');
+        } else {
+            td.style.background = 'none';
+            const dayDiv = td.querySelector('.cal-day');
+            if(dayDiv) dayDiv.classList.remove('is-selected');
+        }
+    });
+}
+
+// ==========================================
+// 5. 収支一覧画面
+// ==========================================
+function renderTransactionTab() {
+    let html = `
+    <div class="section">
+        <h2 style="font-size:18px; font-weight:700; margin-bottom:16px; color:var(--brand-900);">収支一覧</h2>
+    `;
+    if (state.transactions.length === 0) {
+        html += '<p style="font-size:14px; color:var(--gray-600)">登録されたデータがありません。</p>';
+    } else {
+        const list = [...state.transactions].sort((a,b) => b.date.localeCompare(a.date));
+        list.forEach(t => {
+            const isInc = t.type === 'income';
+            const sign = isInc ? '＋' : '－';
+            const color = isInc ? 'var(--income-color)' : 'var(--expense-color)';
+            html += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border);">
+                <div>
+                    <div style="font-size:14px; font-weight:700;">${t.label || (isInc ? '収入' : '支出')}</div>
+                    <div style="font-size:11px; color:var(--gray-600); margin-top:2px;">${t.date} ${t.isRepeat ? '(毎月)' : ''}</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:15px; font-weight:700; color:${color}">${sign}${fmtMoney(t.amount)}</span>
+                    <button onclick="deleteTransaction('${t.id}')" style="background:none; border:none; color:var(--expense-color); font-size:12px; cursor:pointer;">削除</button>
+                </div>
+            </div>
+            `;
+        });
+    }
+    html += '</div>';
+    return html;
+}
+
+// ==========================================
+// 6. シフト管理画面 & 追加编辑核心逻辑
+// ==========================================
+function renderShiftTab() {
+    let html = `
+    <div class="section">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="font-size:18px; font-weight:700; color:var(--brand-900);">バイト・シフト</h2>
+            <div style="display:flex; gap:8px;">
+                <button class="header-edit-btn" style="background:var(--brand-600);" onclick="prepareJobAdd()">＋ バイト先</button>
+                <button class="header-edit-btn" style="background:var(--brand-500);" onclick="prepareShiftAdd()">＋ シフト</button>
+            </div>
+        </div>
+        
+        <h3 style="font-size:14px; font-weight:700; margin-bottom:10px; color:var(--gray-600)">登録バイト先</h3>
+    `;
+    
+    if (state.jobs.length === 0) {
+        html += '<p style="font-size:13px; color:var(--gray-600); margin-bottom:20px;">バイト先が登録されていません。</p>';
+    } else {
+        state.jobs.forEach(j => {
+            html += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:var(--gray-50); border-radius:var(--radius); margin-bottom:8px;">
+                <div>
+                    <div style="font-size:14px; font-weight:700;">${j.name}</div>
+                    <div style="font-size:12px; color:var(--gray-600); margin-top:2px;">時給: ￥${j.wage} / 締日: ${j.cutDay === 'end' ? '月末' : j.cutDay + '日'}</div>
+                </div>
+                <button onclick="prepareJobEdit('${j.id}')" style="background:none; border:1px solid var(--brand-500); color:var(--brand-600); padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer;">編集</button>
+            </div>
+            `;
+        });
+    }
+    
+    html += `<h3 style="font-size:14px; font-weight:700; margin:20px 0 10px 0; color:var(--gray-600)">シフト実績一覧</h3>`;
+    
+    if (state.shifts.length === 0) {
+        html += '<p style="font-size:13px; color:var(--gray-600)">シフトが登録されていません。</p>';
+    } else {
+        const sortedShifts = [...state.shifts].sort((a,b) => b.date.localeCompare(a.date));
+        sortedShifts.forEach(s => {
+            const j = state.jobs.find(job => job.id === s.jobId);
+            html += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
+                <div>
+                    <div style="font-size:13px; font-weight:600;">${j ? j.name : '不明'}</div>
+                    <div style="font-size:11px; color:var(--gray-600);">${s.date} (${s.hours}時間)</div>
+                </div>
+                <button onclick="deleteShift('${s.id}')" style="background:none; border:none; color:var(--expense-color); font-size:12px; cursor:pointer;">削除</button>
+            </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    return html;
+}
+
+function loadJob(jobId) {
+    const job = state.jobs.find(j => j.id === jobId);
+    if (!job) { alert("バイト先が見つかりません"); return; }
+    document.getElementById('job-name').value = job.name;
+    document.getElementById('job-wage').value = job.wage;
+    document.getElementById('job-cutday').value = job.cutDay;
+    state.editingId = jobId;
+}
+
+function prepareJobEdit(jobId) {
+    const targetId = jobId || (state.jobs.length > 0 ? state.jobs[0].id : null);
+    if (!targetId) { alert('編集できるバイト先がありません'); return; }
+    loadJob(targetId);
+
+    const modal = document.getElementById('job-modal');
+    if (modal) modal.style.display = 'flex';
+
+    const submitBtn = document.getElementById('job-submit-btn');
+    if (submitBtn) {
+        submitBtn.textContent = '更新する';
+        submitBtn.onclick = updateJob;
+    }
+    const deleteBtn = document.getElementById('job-delete-btn');
+    if (deleteBtn) deleteBtn.style.display = 'inline-block';
+
+    const modalTitle = document.getElementById('job-modal-title');
+    if (modalTitle) modalTitle.textContent = 'バイト先を編集';
+}
+
+function prepareJobAdd() {
+    document.getElementById('job-name').value = '';
+    document.getElementById('job-wage').value = '';
+    document.getElementById('job-cutday').value = 'end';
+    state.editingId = null;
+
+    const modal = document.getElementById('job-modal');
+    if (modal) modal.style.display = 'flex';
+
+    const submitBtn = document.getElementById('job-submit-btn');
+    if (submitBtn) {
+        submitBtn.textContent = '追加する';
+        submitBtn.onclick = addJob;
+    }
+    const deleteBtn = document.getElementById('job-delete-btn');
+    if (deleteBtn) deleteBtn.style.display = 'none';
+
+    const modalTitle = document.getElementById('job-modal-title');
+    if (modalTitle) modalTitle.textContent = 'バイト先を追加';
+}
+
+function updateJob() {
+    if (!state.editingId) { alert('編集対象が見つかりません'); return; }
+    const job = state.jobs.find(j => j.id === state.editingId);
+    if (!job) { alert('バイト先が見つかりません'); return; }
+
+    const name = document.getElementById('job-name').value.trim();
+    const wage = parseInt(document.getElementById('job-wage').value);
+    const cutDayRaw = document.getElementById('job-cutday').value;
+    const cutDay = cutDayRaw === 'end' ? 'end' : parseInt(cutDayRaw);
+
+    if (!name || !wage) { alert('入力内容が不足しています'); return; }
+
+    job.name = name;
+    job.wage = wage;
+    job.cutDay = cutDay;
+
+    save();
+    closeModal('job-modal');
+    render();
+}
+
+function deleteJob() {
+    if (!state.editingId) { alert('削除対象が選択されていません'); return; }
+    if (!confirm('このバイト先を削除しますか？紐づくシフト等に影響が出る場合があります。')) return;
+
+    state.jobs = state.jobs.filter(j => j.id !== state.editingId);
+    state.shifts = state.shifts.filter(s => s.jobId !== state.editingId);
+    
+    save();
+    closeModal('job-modal');
+    render();
+}
+
+function addJob() {
+    const name = document.getElementById('job-name').value.trim();
+    const wage = Number(document.getElementById('job-wage').value);
+    const cutDayRaw = document.getElementById('job-cutday').value;
+    const cutDay = cutDayRaw === 'end' ? 'end' : Number(cutDayRaw);
+
+    if (!name || !wage) { alert('入力内容が不足しています'); return; }
+    state.jobs.push({ id: Date.now().toString(), name, wage, cutDay });
+    save();
+    closeModal('job-modal');
+    render();
+}
+
+function prepareShiftAdd() {
+    if (state.jobs.length === 0) { alert('先にバイト先を登録してください'); return; }
+    const select = document.getElementById('shift-job-select');
+    select.innerHTML = state.jobs.map(j => `<option value="${j.id}">${j.name}</option>`).join('');
+    document.getElementById('shift-date').value = todayStr();
+    document.getElementById('shift-hours').value = '';
+    document.getElementById('shift-modal').style.display = 'flex';
+}
+
+function addShift() {
+    const jobId = document.getElementById('shift-job-select').value;
+    const date = document.getElementById('shift-date').value;
+    const hours = Number(document.getElementById('shift-hours').value);
+    if (!jobId || !date || !hours) { alert('入力内容が不足しています'); return; }
+    state.shifts.push({ id: Date.now().toString(), jobId, date, hours });
+    save();
+    closeModal('shift-modal');
+    render();
+}
+
+function deleteShift(id) {
+    if(!confirm('削除しますか？')) return;
+    state.shifts = state.shifts.filter(s => s.id !== id);
+    save();
+    render();
+}
+
+// ==========================================
+// 7. 収支入力 & 計算エンジン
+// ==========================================
+function showTxModal() {
+    document.getElementById('amountInput').value = '';
+    document.getElementById('labelInput').value = '';
+    document.getElementById('repeatCheckbox').checked = false;
+    
+    let gridHtml = '';
+    for(let i=1; i<=31; i++) {
+        gridHtml += `<button class="tab-btn" style="padding:6px 0; border:1px solid var(--border); border-radius:6px;" onclick="selectTxDay(this, ${i})">${i}</button>`;
+    }
+    const grid = document.getElementById('tx-date-grid');
+    grid.innerHTML = gridHtml;
+    state.txDay = null;
+    
+    setTxType('income');
+    document.getElementById('tx-modal').style.display = 'flex';
+}
+
+function setTxType(type) {
+    state.txType = type;
+    const isInc = type === 'income';
+    document.getElementById('btnIncome').className = `tab-btn ${isInc ? 'active' : ''}`;
+    document.getElementById('btnExpense').className = `tab-btn ${!isInc ? 'active' : ''}`;
+}
+
+function selectTxDay(btn, day) {
+    const btns = document.getElementById('tx-date-grid').getElementsByTagName('button');
+    for(let b of btns) b.style.background = 'none';
+    btn.style.background = 'var(--brand-100)';
+    state.txDay = day;
+}
+
+function addTransaction() {
+    const amt = Number(document.getElementById('amountInput').value);
+    const label = document.getElementById('labelInput').value.trim();
+    const isRepeat = document.getElementById('repeatCheckbox').checked;
+    
+    if (!amt || !state.txDay) { alert('金額と日付を入力してください'); return; }
+    const dateStr = `${state.calYear}-${String(state.calMonth+1).padStart(2,'0')}-${String(state.txDay).padStart(2,'0')}`;
+    
+    state.transactions.push({
+        id: Date.now().toString(),
+        type: state.txType,
+        amount: amt,
+        date: dateStr,
+        label: label,
+        isRepeat: isRepeat,
+        day: state.txDay
+    });
+    
+    save();
+    closeModal('tx-modal');
+    render();
+}
+
+function deleteTransaction(id) {
+    if (!confirm('削除しますか？')) return;
+    state.transactions = state.transactions.filter(t => t.id !== id);
+    save();
+    render();
+}
+
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+}
+
+function getBalance(targetDateStr) {
+    if (!state.account) return 0;
+    
+    let currentBank = state.account.bank;
+    const baseDate = new Date(state.account.date);
+    const targetDate = new Date(targetDateStr);
+    
+    if (targetDate < baseDate) return currentBank;
+    
+    let loopDate = new Date(baseDate);
+    while (loopDate <= targetDate) {
+        const loopStr = fmtDate(loopDate);
+        const loopDay = loopDate.getDate();
+        const isLastDay = new Date(loopDate.getFullYear(), loopDate.getMonth() + 1, 0).getDate() === loopDay;
+        
+        state.transactions.forEach(t => {
+            if (!t.isRepeat && t.date === loopStr && loopStr >= state.account.date) {
+                currentBank += (t.type === 'income' ? t.amount : -t.amount);
+            }
+        });
+        
+        state.transactions.forEach(t => {
+            if (t.isRepeat && loopStr >= state.account.date) {
+                if (t.day === loopDay || (t.day > 28 && isLastDay && loopDay < t.day)) {
+                    currentBank += (t.type === 'income' ? t.amount : -t.amount);
+                }
+            }
+        });
+        
+        state.jobs.forEach(job => {
+            const dayShifts = state.shifts.filter(s => s.jobId === job.id && s.date === loopStr);
+            dayShifts.forEach(s => {
+                currentBank += (s.hours * job.wage);
+            });
+        });
+        
+        loopDate.setDate(loopDate.getDate() + 1);
+    }
+    return currentBank;
+}
+
+// ==========================================
+// 8. 初期化
+// ==========================================
+load();
+render();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,77 @@
+#calendar {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+section {
+    margin: 10px;
+}
+
+h1 {
+    font-size: 18px;
+}
+
+table {
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+td {
+    border: 1px solid #ddd;
+    padding: 5px;
+    text-align: center;
+}
+
+td:first-child {
+    color: red;
+}
+
+td:last-child {
+    color: royalblue;
+}
+
+td.is-disabled {
+    color: #ccc;
+}
+
+td.is-today {
+    background: #1D9E75;
+    color: white !important;
+    border-radius: 50%;
+    font-weight: bold;
+}
+
+td.is-selected {
+    outline: 2px solid #1D9E75;
+    outline-offset: -2px;
+}
+
+#detail {
+    margin: 20px 10px;
+    padding: 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+#detail-balance {
+    font-size: 24px;
+    font-weight: bold;
+    color: #1D9E75;
+}
+
+.dots {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    margin-top: 2px;
+}
+
+.dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+}
+
+.dot-expense { background: red; }
+.dot-income  { background: green; }
+.dot-shift   { background: purple; }
