@@ -45,11 +45,8 @@
 - GitHubでのブランチ運用・チームメンバーとのコード統合を経験しました。
 
 ## セットアップ方法
-```bash
-git clone https://github.com/sasasa384/Future-Balance-Prediction.git
-cd Future-Balance-Prediction
-# ブラウザで index.html を開く、もしくは簡易サーバーを起動
-```
+ブラウザで exam2(4).html を開く。
+
 
 ## 開発中に直面した課題と学び
 - 基準日当日の収支が残高に反映されないバグが発生。`getBalance()` 内の比較演算子が `>` になっており、当日分が計算対象外だったことが原因。`>=` に修正して解決。
